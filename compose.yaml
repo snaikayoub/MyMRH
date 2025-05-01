@@ -1,25 +1,53 @@
-
 services:
-###> doctrine/doctrine-bundle ###
-  database:
-    image: postgres:${POSTGRES_VERSION:-16}-alpine
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB:-MyMRH_Database}
-      # You should definitely change the password in production
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-Ab@123456}
-      POSTGRES_USER: ${POSTGRES_USER:-MyMRH_Database_user}
-    healthcheck:
-      test: ["CMD", "pg_isready", "-d", "${POSTGRES_DB:-MyMRH_Database}", "-U", "${POSTGRES_USER:-MyMRH_Database_user}"]
-      timeout: 5s
-      retries: 5
-      start_period: 60s
-    volumes:
-      - database_data:/var/lib/postgresql/data:rw
-      # You may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
-      # - ./docker/db/data:/var/lib/postgresql/data:rw
-###< doctrine/doctrine-bundle ###
+    database:
+        image: mysql:8.0
+        container_name: mymrh_db
+        environment:
+            MYSQL_ROOT_PASSWORD: Ab@198524
+            MYSQL_DATABASE: u250848858_main
+            MYSQL_USER: u250848858_user
+            MYSQL_PASSWORD: Ab@198524
+            MYSQL_ROOT_HOST: '%'
+        ports:
+            - '3306:3306'
+        volumes:
+            - mysql_data:/var/lib/mysql
+        networks:
+            - mymrh_network
+        healthcheck:
+            test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+            interval: 10s
+            timeout: 5s
+            retries: 3
+
+    mailcatcher:
+        image: schickling/mailcatcher:latest
+        container_name: mymrh_mail
+        ports:
+            - "1080:1080"
+            - "1025:1025"
+        networks:
+            - mymrh_network
+
+    phpmyadmin:
+        image: phpmyadmin/phpmyadmin
+        container_name: mymrh_pma
+        depends_on:
+            database:
+                condition: service_healthy
+        ports:
+            - "8080:80"
+        environment:
+            PMA_HOST: database
+            PMA_USER: u250848858_user
+            PMA_PASSWORD: Ab@198524
+        networks:
+            - mymrh_network
 
 volumes:
-###> doctrine/doctrine-bundle ###
-  database_data:
-###< doctrine/doctrine-bundle ###
+    mysql_data:
+        name: mymrh_mysql_data
+
+networks:
+    mymrh_network:
+        name: mymrh_network

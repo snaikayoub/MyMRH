@@ -37,9 +37,6 @@ class EmployeeSituation
     private ?string $categorie = null;
 
     #[ORM\Column(length: 255)]
-    private ?string $repere = null;
-
-    #[ORM\Column(length: 255)]
     private ?string $sitFamiliale = null;
 
     #[ORM\Column]
@@ -50,6 +47,9 @@ class EmployeeSituation
 
     #[ORM\Column(nullable: true)]
     private ?float $tauxHoraire = null;
+
+    #[ORM\Column(length: 255)]
+    private ?string $type_paie = null;
 
     public function getId(): ?int
     {
@@ -140,18 +140,6 @@ class EmployeeSituation
         return $this;
     }
 
-    public function getRepere(): ?string
-    {
-        return $this->repere;
-    }
-
-    public function setRepere(string $repere): static
-    {
-        $this->repere = $repere;
-
-        return $this;
-    }
-
     public function getSitFamiliale(): ?string
     {
         return $this->sitFamiliale;
@@ -196,6 +184,18 @@ class EmployeeSituation
     public function setTauxHoraire(?float $tauxHoraire): static
     {
         $this->tauxHoraire = $tauxHoraire;
+
+        return $this;
+    }
+
+    public function getTypePaie(): ?string
+    {
+        return $this->type_paie;
+    }
+
+    public function setTypePaie(string $type_paie): static
+    {
+        $this->type_paie = $type_paie;
 
         return $this;
     }
