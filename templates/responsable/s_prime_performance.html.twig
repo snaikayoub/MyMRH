@@ -1,0 +1,241 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Validation des primes
+{% endblock %}
+
+{% block body %}
+	<div class="container py-5">
+
+		<h2 class="mb-4">
+			<i class="fas fa-check-circle text-success me-2"></i>Validation des primes de performance
+		</h2>
+
+		{% if periodeCourante %}
+			<div class="alert alert-info d-flex align-items-center gap-4 mb-4">
+				<div>
+					<i class="fas fa-calendar-alt me-2"></i>
+					<strong>Période :</strong>
+					{{ periodeCourante.typePaie|capitalize }}
+					–
+					{{ '%02d'|format(periodeCourante.mois) }}/{{ periodeCourante.annee }}
+					{% if periodeCourante.quinzaine %}
+						(Q{{ periodeCourante.quinzaine }})
+					{% endif %}
+				</div>
+				<div>
+					<i class="fas fa-users me-1 text-primary"></i>
+					<strong>Score équipe :</strong>
+					{{ periodeCourante.scoreEquipe ?? 'N/A' }}
+				</div>
+				<div>
+					<i class="fas fa-star me-1 text-warning"></i>
+					<strong>Score collectif :</strong>
+					{{ periodeCourante.scoreCollectif ?? 'N/A' }}
+				</div>
+			</div>
+		{% endif %}
+
+		{# TABLEAU 1 : À VALIDER #}
+		<div class="card mb-5 shadow-sm">
+			<div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+				<h5 class="mb-0">
+					<i class="fas fa-hourglass-start me-2"></i>Primes en attente de validation</h5>
+			</div>
+			<div class="card-body">
+				<form method="post" action="{{ path('responsable_valider_batch') }}" id="form-batch">
+					<input type="hidden" name="type" value="{{ type }}">
+					<div class="table-responsive">
+						<table class="table table-bordered table-hover align-middle mb-0">
+							<thead class="table-light">
+								<tr>
+									<th><input type="checkbox" id="checkAll"></th>
+									<th>Employé</th>
+									<th>Matricule</th>
+									<th>Période</th>
+									<th>Montant</th>
+									<th>Note Hiérarchique</th>
+									<th>Jours Perf.</th>
+									<th class="text-center">Actions</th>
+								</tr>
+							</thead>
+							<tbody>
+								{% for pp in primes %}
+									<tr>
+										<td><input type="checkbox" name="selected[]" value="{{ pp.id }}"></td>
+										<td>{{ pp.employee.prenom }}
+											{{ pp.employee.nom }}</td>
+										<td>{{ pp.employee.matricule }}</td>
+										<td>{{ '%02d'|format(pp.periodePaie.mois) }}/{{ pp.periodePaie.annee }}</td>
+										<td>
+											<strong>{{ pp.getMontantFormate() }}</strong>
+										</td>
+										<td>{{ pp.noteHierarchique }}</td>
+										<td>{{ pp.joursPerf }}</td>
+										<td class="text-center">
+											<button type="button" class="btn btn-sm btn-success btn-valider-ligne" data-id="{{ pp.id }}">
+												<i class="fas fa-check me-1"></i>Valider
+											</button>
+											<button type="button" class="btn btn-sm btn-outline-danger btn-retour-ligne ms-1" data-id="{{ pp.id }}">
+												<i class="fas fa-undo me-1"></i>Rejeter
+											</button>
+										</td>
+									</tr>
+								{% else %}
+									<tr>
+										<td colspan="8" class="text-center text-muted">Aucune prime en attente.</td>
+									</tr>
+								{% endfor %}
+							</tbody>
+						</table>
+					</div>
+
+					
+						<div class="text-end mt-3">
+							<button type="submit" class="btn btn-success">
+								<i class="fas fa-check-double me-1"></i>Valider la sélection
+							</button>
+							<button type="submit" formaction="{{ path('responsable_retour_batch') }}" class="btn btn-outline-danger ms-2">
+								<i class="fas fa-undo me-1"></i>Retourner la sélection
+							</button>
+							<a href="{{ path('responsable_dashboard') }}" class="btn btn-outline-secondary">
+								<i class="fas fa-arrow-left me-1"></i>Retour au tableau de bord
+							</a>
+						</div>
+					
+				</form>
+			</div>
+		</div>
+
+		{# Formulaire caché pour les actions individuelles #}
+		<form id="form-action-ligne" method="post" style="display:none;">
+			<input type="hidden" name="type" value="{{ type }}">
+		</form>
+
+		{# TABLEAU 2 : PRIMES VALIDÉES #}
+		<div class="card shadow-sm">
+			<div class="card-header bg-success text-white">
+				<h5 class="mb-0">
+					<i class="fas fa-check-double me-2"></i>Primes validées</h5>
+			</div>
+			<div class="card-body">
+				<div class="table-responsive">
+					<table class="table table-bordered table-hover align-middle mb-0">
+						<thead class="table-light">
+							<tr>
+								<th>Employé</th>
+								<th>Matricule</th>
+								<th>Période</th>
+								<th>Montant</th>
+								<th>Note Hiérarchique</th>
+								<th>Jours Perf.</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for pp in validated %}
+								<tr>
+									<td>{{ pp.employee.prenom }}
+										{{ pp.employee.nom }}</td>
+									<td>{{ pp.employee.matricule }}</td>
+									<td>{{ '%02d'|format(pp.periodePaie.mois) }}/{{ pp.periodePaie.annee }}</td>
+									<td>
+										<strong>{{ pp.getMontantFormate() }}</strong>
+									</td>
+									<td>{{ pp.noteHierarchique }}</td>
+									<td>{{ pp.joursPerf }}</td>
+								</tr>
+							{% else %}
+								<tr>
+									<td colspan="6" class="text-center text-muted">Aucune prime validée.</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		{# TABLEAU 3 : PRIMES RETOURNÉES #}
+		<div class="card my-5 shadow-sm">
+			<div class="card-header bg-warning text-dark">
+				<h5 class="mb-0">
+					<i class="fas fa-undo me-2"></i>Primes non validées</h5>
+			</div>
+			<div class="card-body">
+				<div class="table-responsive">
+					<table class="table table-bordered table-hover align-middle mb-0">
+						<thead class="table-light">
+							<tr>
+								<th>Employé</th>
+								<th>Matricule</th>
+								<th>Période</th>
+								<th>Montant</th>
+								<th>Note Hiérarchique</th>
+								<th>Jours Perf.</th>
+							</tr>
+						</thead>
+						<tbody>
+							{% for pp in drafts %}
+								<tr>
+									<td>{{ pp.employee.prenom }}
+										{{ pp.employee.nom }}</td>
+									<td>{{ pp.employee.matricule }}</td>
+									<td>{{ '%02d'|format(pp.periodePaie.mois) }}/{{ pp.periodePaie.annee }}</td>
+									<td>
+										<strong>{{ pp.getMontantFormate() }}</strong>
+									</td>
+									<td>{{ pp.noteHierarchique }}</td>
+									<td>{{ pp.joursPerf }}</td>
+								</tr>
+							{% else %}
+								<tr>
+									<td colspan="6" class="text-center text-muted">Aucune prime retournée.</td>
+								</tr>
+							{% endfor %}
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		document.addEventListener('DOMContentLoaded', function () {
+			// Gestion du "Tout sélectionner"
+			const checkAll = document.getElementById('checkAll');
+			if (checkAll) {
+				checkAll.addEventListener('change', function (e) {
+					const checkboxes = document.querySelectorAll('input[name="selected[]"]');
+					checkboxes.forEach(cb => cb.checked = e.target.checked);
+				});
+			}
+
+			// Gestion des boutons de validation individuelle
+			document.querySelectorAll('.btn-valider-ligne').forEach(button => {
+				button.addEventListener('click', function(e) {
+					const id = this.getAttribute('data-id');
+					if (confirm('Valider cette prime ?')) {
+						const form = document.getElementById('form-action-ligne');
+						form.action = `{{ path('responsable_valider_ligne', { id: '__ID__' }) }}`.replace('__ID__', id);
+						form.submit();
+					}
+				});
+			});
+
+			// Gestion des boutons de retour individuel
+			document.querySelectorAll('.btn-retour-ligne').forEach(button => {
+				button.addEventListener('click', function(e) {
+					const id = this.getAttribute('data-id');
+					if (confirm('Retourner cette prime au gestionnaire ?')) {
+						const form = document.getElementById('form-action-ligne');
+						form.action = `{{ path('responsable_retour_ligne', { id: '__ID__' }) }}`.replace('__ID__', id);
+						form.submit();
+					}
+				});
+			});
+		});
+	</script>
+{% endblock %}

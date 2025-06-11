@@ -30,11 +30,9 @@ class EmployeeSituation
     #[ORM\Column(length: 255)]
     private ?string $grade = null;
 
-    #[ORM\Column(length: 255)]
-    private ?string $affectation = null;
-
-    #[ORM\Column(length: 255)]
-    private ?string $categorie = null;
+    #[ORM\ManyToOne(targetEntity: Service::class, inversedBy: 'employeeSituations')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Service $service = null;
 
     #[ORM\Column(length: 255)]
     private ?string $sitFamiliale = null;
@@ -50,6 +48,10 @@ class EmployeeSituation
 
     #[ORM\Column(length: 255)]
     private ?string $type_paie = null;
+
+    #[ORM\ManyToOne(inversedBy: 'employeeSituations')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Category $category = null;
 
     public function getId(): ?int
     {
@@ -116,26 +118,14 @@ class EmployeeSituation
         return $this;
     }
 
-    public function getAffectation(): ?string
+    public function getService(): ?Service
     {
-        return $this->affectation;
+        return $this->service;
     }
-
-    public function setAffectation(string $affectation): static
+    
+    public function setService(?Service $service): static
     {
-        $this->affectation = $affectation;
-
-        return $this;
-    }
-
-    public function getCategorie(): ?string
-    {
-        return $this->categorie;
-    }
-
-    public function setCategorie(string $categorie): static
-    {
-        $this->categorie = $categorie;
+        $this->service = $service;
 
         return $this;
     }
@@ -198,5 +188,43 @@ class EmployeeSituation
         $this->type_paie = $type_paie;
 
         return $this;
+    }
+
+    public function getCategory(): ?Category
+    {
+        return $this->category;
+    }
+
+    public function setCategory(?Category $category): static
+    {
+        $this->category = $category;
+
+        return $this;
+    }
+    public function getTauxPP(): ?float
+{
+    $category = $this->getCategory();
+    $grpPerf = $this->getEmployee()?->getGrpPerf();
+
+    if (!$category || !$grpPerf) {
+        return null;
+    }
+
+    foreach ($category->getCategoryTMs() as $catTM) {
+        if ($catTM->getGrpPerf() === $grpPerf) {
+            return $catTM->getTM();
+        }
+    }
+
+    return null;
+}
+    public function __toString(): string
+    {
+        return sprintf(
+            '%s - %s (%s)',
+            $this->getEmployee()->getFullName(),
+            $this->getNatureChangement(),
+            $this->getStartDate()->format('Y-m-d')
+        );
     }
 }

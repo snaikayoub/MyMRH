@@ -2,9 +2,16 @@
 
 namespace App\Controller\Admin;
 
+use App\Entity\Category;
+use App\Entity\CategoryTM;
 use App\Entity\User;
+use App\Entity\Service;
+use App\Entity\Division;
 use App\Entity\Employee;
+use App\Entity\PeriodePaie;
+use App\Entity\PrimePerformance;
 use App\Entity\EmployeeSituation;
+use App\Entity\GrpPerf;
 use Symfony\Component\HttpFoundation\Response;
 use EasyCorp\Bundle\EasyAdminBundle\Config\MenuItem;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Dashboard;
@@ -57,6 +64,18 @@ class DashboardController extends AbstractDashboardController
 
         yield MenuItem::section('Administration');
         yield MenuItem::linkToCrud('Utilisateurs', 'fa fa-user-cog', User::class);
+
+        yield MenuItem::section('Paies');
+        yield MenuItem::linkToCrud('Primes de performance', 'fa fa-trophy', PrimePerformance::class);
+        yield MenuItem::linkToCrud('Périodes de paie', 'fa fa-calendar-alt', PeriodePaie::class);
+        yield MenuItem::linkToCrud('Category', 'fa fa-calendar-alt', Category::class);
+        yield MenuItem::linkToCrud('GrpPerf', 'fa fa-calendar-alt', GrpPerf::class);
+        yield MenuItem::linkToCrud('CategoryTM', 'fa fa-calendar-alt', CategoryTM::class);
+
+        yield MenuItem::section('Organisation');
+        yield MenuItem::linkToCrud('Divisions', 'fa fa-building', Division::class);
+        yield MenuItem::linkToCrud('Services', 'fa fa-concierge-bell', Service::class);
+
 
         yield MenuItem::section('Navigation');
         yield MenuItem::linkToRoute('Retour au site', 'fa fa-globe', 'home');

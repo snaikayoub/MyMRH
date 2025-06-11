@@ -1,0 +1,57 @@
+{% extends 'base.html.twig' %}
+{% block body %}
+	<h2>Validation –
+		{{ service.nom }}
+		–
+		{{ type|capitalize }}</h2>
+
+	<h4>Primes à valider</h4>
+	<table class="table">
+		<thead>
+			<tr>
+				<th>Employé</th>
+				<th>Montant</th>
+				<th>Action</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for prime in submitted %}
+				<tr>
+					<td>{{ prime.employee.nom }}</td>
+					<td>{{ prime.montantFormate }}</td>
+					<td>
+						<form method="post" action="{{ path('division_valider_prime', { id: prime.id }) }}">
+							<button class="btn btn-sm btn-success">Valider</button>
+						</form>
+					</td>
+				</tr>
+			{% else %}
+				<tr>
+					<td colspan="3">Aucune prime à valider</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+
+	<h4>Primes déjà validées</h4>
+	<table class="table table-bordered">
+		<thead>
+			<tr>
+				<th>Employé</th>
+				<th>Montant</th>
+			</tr>
+		</thead>
+		<tbody>
+			{% for prime in validated %}
+				<tr>
+					<td>{{ prime.employee.nom }}</td>
+					<td>{{ prime.montantFormate }}</td>
+				</tr>
+			{% else %}
+				<tr>
+					<td colspan="2">Aucune prime validée</td>
+				</tr>
+			{% endfor %}
+		</tbody>
+	</table>
+{% endblock %}

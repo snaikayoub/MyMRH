@@ -49,9 +49,26 @@ class Employee
     #[ORM\OneToMany(targetEntity: EmployeeSituation::class, mappedBy: 'employee', orphanRemoval: true)]
     private Collection $employeeSituations;
 
+    /**
+     * @var Collection<int, PrimePerformance>
+     */
+    #[ORM\OneToMany(targetEntity: PrimePerformance::class, mappedBy: 'employee')]
+    private Collection $primePerformances;
+
+    #[ORM\ManyToOne(inversedBy: 'employees')]
+    private ?GrpPerf $grpPerf = null;
+
+    /**
+     * @var Collection<int, Conge>
+     */
+    #[ORM\OneToMany(targetEntity: Conge::class, mappedBy: 'employee')]
+    private Collection $conges;
+
     public function __construct()
     {
         $this->employeeSituations = new ArrayCollection();
+        $this->primePerformances = new ArrayCollection();
+        $this->conges = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -196,4 +213,86 @@ class Employee
 
         return $this;
     }
+
+    /**
+     * @return Collection<int, PrimePerformance>
+     */
+    public function getPrimePerformances(): Collection
+    {
+        return $this->primePerformances;
+    }
+
+    public function addPrimePerformance(PrimePerformance $primePerformance): static
+    {
+        if (!$this->primePerformances->contains($primePerformance)) {
+            $this->primePerformances->add($primePerformance);
+            $primePerformance->setEmployee($this);
+        }
+
+        return $this;
+    }
+
+    public function removePrimePerformance(PrimePerformance $primePerformance): static
+    {
+        if ($this->primePerformances->removeElement($primePerformance)) {
+            // set the owning side to null (unless already changed)
+            if ($primePerformance->getEmployee() === $this) {
+                $primePerformance->setEmployee(null);
+            }
+        }
+
+        return $this;
+    }
+    public function __toString(): string
+    {
+        return $this->getMatricule() . ' - ' . $this->getNom() . ' ' . $this->getPrenom();
+    }
+
+    public function getGrpPerf(): ?GrpPerf
+    {
+        return $this->grpPerf;
+    }
+
+    public function setGrpPerf(?GrpPerf $grpPerf): static
+    {
+        $this->grpPerf = $grpPerf;
+
+        return $this;
+    }
+
+    public function getFullName(): string
+    {
+        return $this->getNom() . ' ' . $this->getPrenom();
+    }
+
+    /**
+     * @return Collection<int, Conge>
+     */
+    public function getConges(): Collection
+    {
+        return $this->conges;
+    }
+
+    public function addConge(Conge $conge): static
+    {
+        if (!$this->conges->contains($conge)) {
+            $this->conges->add($conge);
+            $conge->setEmployee($this);
+        }
+
+        return $this;
+    }
+
+    public function removeConge(Conge $conge): static
+    {
+        if ($this->conges->removeElement($conge)) {
+            // set the owning side to null (unless already changed)
+            if ($conge->getEmployee() === $this) {
+                $conge->setEmployee(null);
+            }
+        }
+
+        return $this;
+    }
+
 }

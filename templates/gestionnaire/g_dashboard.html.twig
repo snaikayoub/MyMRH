@@ -1,0 +1,339 @@
+{# templates/gestionnaire/g_dashboard.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<style>
+		/* Hover effect sur les cards */
+		.card-hover {
+			transition: transform 0.3s, box-shadow 0.3s;
+			border: none;
+		}
+		.card-hover:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 0.75rem 1.5rem rgba(0, 0, 0, 0.15);
+		}
+
+		/* Amélioration visuelle des cartes */
+		.card-icon {
+			width: 64px;
+			height: 64px;
+			margin: 0 auto 1rem;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			font-size: 1.5rem;
+		}
+
+		.card-badge {
+			position: absolute;
+			top: 1rem;
+			right: 1rem;
+			font-size: 0.75rem;
+		}
+
+		/* Styles pour les différents types de cartes */
+		.card-performance {
+			border-left: 4px solid #0d6efd;
+		}
+		.card-conges {
+			border-left: 4px solid #198754;
+		}
+
+		/* Animation des boutons */
+		.btn-action {
+			transition: all 0.2s;
+		}
+		.btn-action:hover {
+			transform: scale(1.05);
+		}
+
+		/* Statistiques animées */
+		.stat-card {
+			transition: transform 0.2s ease;
+		}
+		.stat-card:hover {
+			transform: translateY(-2px);
+		}
+
+		.stat-number {
+			font-size: 2rem;
+			font-weight: bold;
+		}
+
+		/* Style pour les boutons désactivés */
+		.btn-disabled {
+			opacity: 0.6;
+			cursor: not-allowed;
+		}
+	</style>
+{% endblock %}
+
+{% block body %}
+	<div class="container py-5">
+		{# Flash messages #}
+		{% for type, messages in app.flashes %}
+			{% for message in messages %}
+				<div class="alert alert-{{ type == 'error' ? 'danger' : type }} alert-dismissible fade show" role="alert">
+					<i class="fas fa-{{ type == 'error' ? 'exclamation-triangle' : 'check-circle' }} me-2"></i>
+					{{ message }}
+					<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+				</div>
+			{% endfor %}
+		{% endfor %}
+
+		<div class="text-center mb-5">
+			<h1 class="fw-bold">
+				Bienvenue,
+				{{ app.user.fullName|default('Gestionnaire') }}
+				<small class="text-muted">(Gestionnaire)</small>
+			</h1>
+			<p class="lead">Tableau de bord - Gestion des primes de performance et congés</p>
+		</div>
+
+		{# Statistiques rapides #}
+		<div class="row mb-5">
+			<div class="col-md-3">
+				<div class="card bg-primary text-white stat-card">
+					<div class="card-body text-center">
+						<div class="stat-number">{{ collaborateurs_count|default(0) }}</div>
+						<small>Collaborateurs</small>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-3">
+				<div class="card bg-success text-white stat-card">
+					<div class="card-body text-center">
+						<div class="stat-number">{{ saisies_mois|default(0) }}</div>
+						<small>Primes saisies ce mois</small>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-3">
+				<div class="card bg-warning text-white stat-card">
+					<div class="card-body text-center">
+						<div class="stat-number">{{ primes_en_attente|default(0) }}</div>
+						<small>Primes en attente</small>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-3">
+				<div class="card bg-info text-white stat-card">
+					<div class="card-body text-center">
+						<div class="stat-number">{{ conges_en_attente|default(0) }}</div>
+						<small>Congés en attente</small>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{# Statistiques secondaires #}
+		<div class="row mb-5">
+			<div class="col-md-6">
+				<div class="card border-success">
+					<div class="card-body text-center">
+						<i class="fas fa-check-double text-success fa-2x mb-2"></i>
+						<h4 class="text-success mb-0">{{ primes_validees|default(0) }}</h4>
+						<small class="text-muted">Primes validées</small>
+					</div>
+				</div>
+			</div>
+			<div class="col-md-6">
+				<div class="card border-info">
+					<div class="card-body text-center">
+						<i class="fas fa-calendar-check text-info fa-2x mb-2"></i>
+						<h4 class="text-info mb-0">{{ conges_approuves|default(0) }}</h4>
+						<small class="text-muted">Congés approuvés ce mois</small>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+			{# === Card Prime de performance === #}
+			<div class="col">
+				<div class="card card-hover card-performance h-100 shadow-sm position-relative">
+					<span class="badge bg-primary card-badge">Priorité</span>
+					<div class="card-body text-center">
+						<div class="card-icon bg-primary text-white">
+							<i class="fas fa-chart-line"></i>
+						</div>
+						<h5 class="card-title">Prime de performance</h5>
+						<p class="card-text text-muted">
+							Saisissez les paramètres de performance pour vos collaborateurs.
+						</p>
+						<small class="text-muted">
+							<i class="fas fa-users"></i>
+							{{ collaborateurs_performance|default(0) }}
+							collaborateurs concernés
+						</small>
+					</div>
+					<div class="card-footer bg-white border-0 d-flex justify-content-center gap-2">
+						<a href="{{ path('gestionnaire_saisie', { type: 'mensuelle' }) }}" class="btn btn-primary btn-action">
+							<i class="fas fa-calendar-alt me-1"></i>Mensuelle
+						</a>
+						<a href="{{ path('gestionnaire_saisie', { type: 'quinzaine' }) }}" class="btn btn-outline-primary btn-action">
+							<i class="fas fa-calendar-week me-1"></i>Quinzaine
+						</a>
+					</div>
+				</div>
+			</div>
+
+			{# === Card Historique Primes === #}
+			<div class="col">
+				<div class="card card-hover card-performance h-100 shadow-sm">
+					<div class="card-body text-center">
+						<div class="card-icon bg-secondary text-white">
+							<i class="fas fa-history"></i>
+						</div>
+						<h5 class="card-title">Historique des primes</h5>
+						<p class="card-text text-muted">
+							Consultez l'historique des primes de performance saisies.
+						</p>
+						<small class="text-muted">
+							<i class="fas fa-check-circle"></i>
+							{{ primes_validees|default(0) }}
+							primes validées
+						</small>
+					</div>
+					<div class="card-footer bg-white border-0 d-flex justify-content-center gap-2">
+						{# Routes temporairement désactivées en attendant leur implémentation #}
+						<button class="btn btn-secondary btn-disabled" disabled title="Fonctionnalité en cours de développement">
+							<i class="fas fa-list me-1"></i>Mensuelle
+						</button>
+						<button class="btn btn-outline-secondary btn-disabled" disabled title="Fonctionnalité en cours de développement">
+							<i class="fas fa-list me-1"></i>Quinzaine
+						</button>
+					</div>
+				</div>
+			</div>
+
+			{# === Card Congés et absences === #}
+			<div class="col">
+				<div class="card card-hover card-conges h-100 shadow-sm">
+					<div class="card-body text-center">
+						<div class="card-icon bg-success text-white">
+							<i class="fas fa-plane"></i>
+						</div>
+						<h5 class="card-title">Congés et absences</h5>
+						<p class="card-text text-muted">
+							Validation des demandes de congés et suivi des absences.
+						</p>
+						<small class="text-muted">
+							<i class="fas fa-exclamation-triangle"></i>
+							{{ conges_en_attente|default(0) }}
+							demandes en attente
+						</small>
+					</div>
+					<div class="card-footer bg-white border-0 d-flex justify-content-center gap-2">
+						{# Routes temporairement désactivées en attendant leur implémentation #}
+						<button class="btn btn-success btn-disabled" disabled title="Fonctionnalité en cours de développement">
+							<i class="fas fa-check me-1"></i>Valider
+						</button>
+						<button class="btn btn-outline-success btn-disabled" disabled title="Fonctionnalité en cours de développement">
+							<i class="fas fa-calendar me-1"></i>Planning
+						</button>
+					</div>
+				</div>
+			</div>
+
+			{# === Card Rapports === #}
+			<div class="col">
+				<div class="card card-hover h-100 shadow-sm" style="border-left: 4px solid #6c757d;">
+					<div class="card-body text-center">
+						<div class="card-icon bg-secondary text-white">
+							<i class="fas fa-chart-pie"></i>
+						</div>
+						<h5 class="card-title">Rapports et analyses</h5>
+						<p class="card-text text-muted">
+							Consultation des rapports et statistiques détaillées.
+						</p>
+						<small class="text-muted">
+							<i class="fas fa-chart-bar"></i>
+							Statistiques de performance et congés
+						</small>
+					</div>
+					<div class="card-footer bg-white border-0 d-flex justify-content-center">
+						{# Route temporairement désactivée en attendant son implémentation #}
+						<button class="btn btn-secondary btn-disabled" disabled title="Fonctionnalité en cours de développement">
+							<i class="fas fa-chart-line me-1"></i>Voir rapports
+						</button>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{# Actions rapides #}
+		<div class="row mt-5">
+			<div class="col-12">
+				<div class="card bg-light">
+					<div class="card-body">
+						<h5 class="card-title">
+							<i class="fas fa-bolt text-warning"></i>
+							Actions rapides
+						</h5>
+						<div class="d-flex flex-wrap gap-2">
+							<a href="{{ path('gestionnaire_saisie', { type: 'mensuelle' }) }}" class="btn btn-sm btn-outline-primary">
+								<i class="fas fa-plus me-1"></i>Nouvelle saisie
+							</a>
+							{# Boutons temporairement désactivés #}
+							<button class="btn btn-sm btn-outline-success btn-disabled" disabled title="Fonctionnalité en cours de développement">
+								<i class="fas fa-check-circle me-1"></i>Valider congés
+								{% if conges_en_attente|default(0) > 0 %}
+									<span class="badge bg-danger">{{ conges_en_attente }}</span>
+								{% endif %}
+							</button>
+							<button class="btn btn-sm btn-outline-info btn-disabled" disabled title="Fonctionnalité en cours de développement">
+								<i class="fas fa-chart-bar me-1"></i>Voir rapports
+							</button>
+							<button class="btn btn-sm btn-outline-secondary btn-disabled" disabled title="Fonctionnalité en cours de développement">
+								<i class="fas fa-question-circle me-1"></i>Aide
+							</button>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		{# Info si aucune donnée #}
+		{% if (collaborateurs_count|default(0)) == 0 %}
+			<div class="row mt-4">
+				<div class="col-12">
+					<div class="alert alert-info text-center">
+						<i class="fas fa-info-circle fa-2x mb-3"></i>
+						<h5>Aucun service assigné</h5>
+						<p class="mb-0">Vous n'avez aucun service assigné pour le moment. Contactez l'administrateur pour configurer vos permissions.</p>
+					</div>
+				</div>
+			</div>
+		{% endif %}
+	</div>
+{% endblock %}
+
+{% block javascripts %}
+	{{ parent() }}
+	<script>
+		// Animation des compteurs au chargement
+		document.addEventListener('DOMContentLoaded', function() {
+			const statNumbers = document.querySelectorAll('.stat-number');
+			
+			statNumbers.forEach(function(element) {
+				const finalValue = parseInt(element.textContent);
+				if (finalValue > 0) {
+					let currentValue = 0;
+					const increment = Math.ceil(finalValue / 20);
+					
+					const timer = setInterval(function() {
+						currentValue += increment;
+						if (currentValue >= finalValue) {
+							currentValue = finalValue;
+							clearInterval(timer);
+						}
+						element.textContent = currentValue;
+					}, 50);
+				}
+			});
+		});
+	</script>
+{% endblock %}

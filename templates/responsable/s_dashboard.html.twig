@@ -1,0 +1,113 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Dashboard Responsable
+{% endblock %}
+
+{% block stylesheets %}
+	{{ parent() }}
+	<style>
+		.card-hover {
+			transition: transform 0.3s ease, box-shadow 0.3s ease;
+			cursor: pointer;
+		}
+
+		.card-hover:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 10px 20px rgba(0, 0, 0, 0.15);
+		}
+
+		.card-icon {
+			width: 64px;
+			height: 64px;
+			margin: 0 auto 1rem;
+			border-radius: 50%;
+			font-size: 1.8rem;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		.btn-type {
+			width: 48%;
+		}
+
+		.card-type {
+			border-left: 4px solid #0d6efd;
+		}
+
+		.card-conges {
+			border-left: 4px solid #198754;
+		}
+
+		.btn-disabled {
+			opacity: 0.6;
+			pointer-events: none;
+		}
+	</style>
+{% endblock %}
+
+{% block body %}
+	<div class="container py-5">
+		<h2 class="mb-4">
+			<i class="fas fa-user-shield text-primary me-2"></i>Tableau de bord du responsable
+		</h2>
+
+		<div
+			class="row g-4">
+			<!-- Primes de performance -->
+			<div class="col-md-6">
+				<div class="card card-hover shadow-sm h-100 card-type">
+					<div class="card-body d-flex flex-column text-center">
+						<div class="card-icon bg-primary text-white">
+							<i class="fas fa-coins"></i>
+						</div>
+						<h5 class="card-title mb-3">Primes de performance</h5>
+						<p class="text-muted">
+							Validez les primes soumises par les gestionnaires, séparées par type de paie.
+						</p>
+						<div class="mt-auto d-flex justify-content-center gap-2">
+							<a href="{{ path('responsable_prime_performance', { type: 'mensuelle' }) }}" class="btn btn-outline-primary btn-type position-relative">
+								<i class="fas fa-calendar-alt me-1"></i>Mensuelle
+								{% if countMensuelle > 0 %}
+									<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+										{{ countMensuelle }}
+									</span>
+								{% endif %}
+							</a>
+
+							<a href="{{ path('responsable_prime_performance', { type: 'quinzaine' }) }}" class="btn btn-outline-primary btn-type position-relative">
+								<i class="fas fa-calendar-week me-1"></i>Quinzaine
+								{% if countQuinzaine > 0 %}
+									<span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+										{{ countQuinzaine }}
+									</span>
+								{% endif %}
+							</a>
+
+						</div>
+					</div>
+				</div>
+			</div>
+
+			<!-- Validation congés -->
+			<div class="col-md-6">
+				<div class="card card-hover shadow-sm h-100 card-conges">
+					<div class="card-body d-flex flex-column text-center">
+						<div class="card-icon bg-success text-white">
+							<i class="fas fa-calendar-alt"></i>
+						</div>
+						<h5 class="card-title mb-3">Congés et absences</h5>
+						<p class="text-muted">
+							Bientôt disponible : validez les congés et gérez les absences.
+						</p>
+						<div class="mt-auto">
+							<a href="#" class="btn btn-outline-success btn-disabled" disabled>
+								<i class="fas fa-hourglass-half me-1"></i>Bientôt disponible
+							</a>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+{% endblock %}

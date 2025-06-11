@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
@@ -34,6 +36,31 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
 
     #[ORM\Column(length: 255)]
     private ?string $fullName = null;
+
+    /**
+     * @var Collection<int, Service>
+     */
+    #[ORM\ManyToMany(targetEntity: Service::class, mappedBy: 'gestionnaire')]
+    private Collection $managedServices;
+
+    /**
+     * @var Collection<int, Service>
+     */
+    #[ORM\OneToMany(targetEntity: Service::class, mappedBy: 'validateurService')]
+    private Collection $validatedServices;
+
+    /**
+     * @var Collection<int, Division>
+     */
+    #[ORM\OneToMany(targetEntity: Division::class, mappedBy: 'validateurDivision')]
+    private Collection $validatedDivisions;
+
+    public function __construct()
+    {
+        $this->managedServices = new ArrayCollection();
+        $this->validatedServices = new ArrayCollection();
+        $this->validatedDivisions = new ArrayCollection();
+    }
 
     public function getId(): ?int
     {
@@ -120,5 +147,97 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->fullName = $fullName;
 
         return $this;
+    }
+
+    /**
+     * @return Collection<int, Service>
+     */
+    public function getManagedServices(): Collection
+    {
+        return $this->managedServices;
+    }
+
+    public function addManagedService(Service $service): static
+    {
+        if (!$this->managedServices->contains($service)) {
+            $this->managedServices->add($service);
+            $service->addGestionnaire($this);
+        }
+
+        return $this;
+    }
+
+    public function removeManagedService(Service $service): static
+    {
+        if ($this->managedServices->removeElement($service)) {
+            $service->removeGestionnaire($this);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Service>
+     */
+    public function getValidatedServices(): Collection
+    {
+        return $this->validatedServices;
+    }
+
+    public function addValidatedService(Service $validatedService): static
+    {
+        if (!$this->validatedServices->contains($validatedService)) {
+            $this->validatedServices->add($validatedService);
+            $validatedService->setValidateurService($this);
+        }
+
+        return $this;
+    }
+
+    public function removeValidatedService(Service $validatedService): static
+    {
+        if ($this->validatedServices->removeElement($validatedService)) {
+            // set the owning side to null (unless already changed)
+            if ($validatedService->getValidateurService() === $this) {
+                $validatedService->setValidateurService(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, Division>
+     */
+    public function getValidatedDivisions(): Collection
+    {
+        return $this->validatedDivisions;
+    }
+
+    public function addValidatedDivision(Division $validatedDivision): static
+    {
+        if (!$this->validatedDivisions->contains($validatedDivision)) {
+            $this->validatedDivisions->add($validatedDivision);
+            $validatedDivision->setValidateurDivision($this);
+        }
+
+        return $this;
+    }
+
+    public function removeValidatedDivision(Division $validatedDivision): static
+    {
+        if ($this->validatedDivisions->removeElement($validatedDivision)) {
+            // set the owning side to null (unless already changed)
+            if ($validatedDivision->getValidateurDivision() === $this) {
+                $validatedDivision->setValidateurDivision(null);
+            }
+        }
+
+        return $this;
+    }
+
+    public function __toString(): string
+    {
+        return $this->fullName;
     }
 }

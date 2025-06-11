@@ -1,0 +1,18 @@
+{% extends 'base.html.twig' %}
+{% block body %}
+	<h1>Bienvenue,
+		{{ app.user.fullName }}</h1>
+
+	<div class="row">
+		<div class="col-md-4">
+			<div class="card">
+				<div class="card-body text-center">
+					<h5 class="card-title">Primes de performance</h5>
+					<a href="{{ path('division_services', { type: 'mensuelle' }) }}" class="btn btn-primary">Mensuelle</a>
+					<a href="{{ path('division_services', { type: 'quinzaine' }) }}" class="btn btn-outline-primary">Quinzaine</a>
+				</div>
+			</div>
+		</div>
+		{# Ajoutez d'autres cards pour Congés, Rapports... si nécessaire #}
+	</div>
+{% endblock %}
