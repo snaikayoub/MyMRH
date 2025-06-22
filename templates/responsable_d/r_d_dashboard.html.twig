@@ -1,0 +1,24 @@
+{% extends 'base.html.twig' %}
+
+{% block body %}
+	<div class="container py-5">
+		<h1>Bienvenue,
+			{{ app.user.fullName }}</h1>
+		<div class="row mt-4">
+			<div class="col-md-4">
+				<div class="card text-center">
+					<div class="card-body">
+						<h5 class="card-title">Primes de performance</h5>
+						<a href="{{ path('responsable_division_services', { type: 'mensuelle' }) }}" class="btn btn-primary mb-1 w-100">
+							Mensuelle
+						</a>
+						<a href="{{ path('responsable_division_services', { type: 'quinzaine' }) }}" class="btn btn-outline-primary w-100">
+							Quinzaine
+						</a>
+					</div>
+				</div>
+			</div>
+			{# ... autres cards éventuelles ... #}
+		</div>
+	</div>
+{% endblock %}

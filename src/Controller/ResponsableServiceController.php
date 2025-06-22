@@ -24,7 +24,7 @@ class ResponsableServiceController extends AbstractController
         $countMensuelle = $repo->countSubmittedByType($user, 'mensuelle');
         $countQuinzaine = $repo->countSubmittedByType($user, 'quinzaine');
 
-        return $this->render('responsable/s_dashboard.html.twig', [
+        return $this->render('responsable_s/s_dashboard.html.twig', [
             'countMensuelle' => $countMensuelle,
             'countQuinzaine' => $countQuinzaine,
         ]);
@@ -48,7 +48,7 @@ class ResponsableServiceController extends AbstractController
         $draft = $repo->findByServiceAndStatusAndType($user, 'draft', $type);
         $validated = $repo->findByServiceAndStatusAndType($user, 'service_validated', $type);
 
-        return $this->render('responsable/s_prime_performance.html.twig', [
+        return $this->render('responsable_s/s_prime_performance.html.twig', [
             'type' => $type,
             'primes' => $submitted,
             'drafts' => $draft,

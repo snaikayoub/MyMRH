@@ -28,3 +28,6 @@ framework:
                 retour_service:
                     from: 'service_validated'
                     to: 'submitted'
+                retour_division:
+                    from: 'division_validated'
+                    to: 'service_validated'

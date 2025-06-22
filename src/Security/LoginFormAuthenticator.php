@@ -49,7 +49,7 @@ class LoginFormAuthenticator extends AbstractLoginFormAuthenticator
         } elseif (in_array('ROLE_RH', $roles, true)) {
             $route = 'rh_dashboard';
         } elseif (in_array('ROLE_RESPONSABLE_DIVISION', $roles, true)) {
-            $route = 'division_dashboard';
+            $route = 'responsable_division_dashboard';
         } elseif (in_array('ROLE_RESPONSABLE_SERVICE', $roles, true)) {
             $route = 'responsable_dashboard';
         } elseif (in_array('ROLE_GESTIONNAIRE_SERVICE', $roles, true)) {
