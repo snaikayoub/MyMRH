@@ -30,12 +30,12 @@ class PrimePerformanceCrudController extends AbstractCrudController
         yield AssociationField::new('periodePaie')
             ->setRequired(true);
         
-        yield NumberField::new('tauxMonaitaire');
-        yield NumberField::new('scoreEquipe');
-        yield NumberField::new('scoreCollectif');
-        yield NumberField::new('joursPerf');
-        yield NumberField::new('noteHierarchique');
-        yield NumberField::new('montantPerf')
+        yield NumberField::new('scoreEquipe', 'Score Équipe');
+        yield NumberField::new('scoreCollectif', 'Score Collectif');
+        yield NumberField::new('joursPerf', 'Jours Perf.');
+        yield NumberField::new('noteHierarchique', 'Note Hiérarchique');
+
+        yield NumberField::new('montantPerf', 'Montant')
             ->hideOnForm();
         
         if (Crud::PAGE_INDEX === $pageName || Crud::PAGE_DETAIL === $pageName) {

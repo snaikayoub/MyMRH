@@ -23,7 +23,7 @@
 		{# ✅ Navbar responsive Bootstrap #}
 		<nav class="navbar navbar-expand-lg navbar-light bg-light">
 			<div class="container-fluid">
-				<a class="navbar-brand" href="{{ path('home') }}">MyMRH</a>
+				<a class="navbar-brand" href="#">MyMRH</a>
 
 				<div class="collapse navbar-collapse">
 					<ul class="navbar-nav ms-auto mb-2 mb-lg-0">
@@ -58,6 +58,15 @@
 			</div>
 		</nav>
 
+		{# MESSAGES FLASH #}
+		{% for label, messages in app.flashes %}
+			{% for message in messages %}
+				<div class="alert alert-{{ label == 'success' ? 'success' : (label == 'danger' ? 'danger' : 'info') }} alert-dismissible fade show" role="alert">
+					{{ message }}
+					<button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+				</div>
+			{% endfor %}
+		{% endfor %}
 
 		{# ✅ Contenu principal #}
 		<main class="container mt-1 pt-1"> {% block body %}{% endblock %}

@@ -1,0 +1,180 @@
+{# templates/responsable_d/r_d_prime_performance.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Validation des primes{% endblock %}
+
+{% block body %}
+<div class="container py-5">
+
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>
+      <i class="fas fa-check-circle text-success me-2"></i>
+      Validation – {{ service.nom }} ({{ type|capitalize }})
+    </h2>
+    <a href="{{ path('responsable_division_dashboard') }}" class="btn btn-outline-secondary">
+      <i class="fas fa-arrow-left me-1"></i>Retour au dashboard
+    </a>
+  </div>
+
+  {# --- Période Courante --- #}
+  {% if periodeCourante %}
+    <div class="alert alert-info mb-5">
+      <i class="fas fa-calendar-alt me-1"></i>
+      Période :
+      {{ '%02d'|format(periodeCourante.mois) }}/{{ periodeCourante.annee }}
+      {% if periodeCourante.quinzaine %}(Q{{ periodeCourante.quinzaine }}){% endif %}
+      &nbsp;&nbsp;
+      <i class="fas fa-star me-1 text-warning"></i>Score équipe :
+      {{ periodeCourante.scoreEquipe }}
+      &nbsp;&nbsp;
+      <i class="fas fa-users me-1 text-primary"></i>Score collectif :
+      {{ periodeCourante.scoreCollectif }}
+    </div>
+  {% endif %}
+
+  {# --- 1) Primes soumises (status=submitted) --- #}
+  <div class="card mb-5 shadow-sm">
+    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+      <h5 class="mb-0"><i class="fas fa-paper-plane me-2"></i>Primes soumises</h5>
+      <span class="badge bg-light text-dark">{{ submitted|length }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Employé</th>
+              <th>Matricule</th>
+              <th>Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pp in submitted %}
+              <tr>
+                <td>{{ pp.employee.prenom }} {{ pp.employee.nom }}</td>
+                <td>{{ pp.employee.matricule }}</td>
+                <td>{{ pp.getMontantFormate() }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-center py-4">Aucune prime soumise.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {# --- 2) Primes en attente de validation (service_validated) --- #}
+  <form method="post" action="{{ path('responsable_division_valider_batch') }}" id="form-batch">
+    <input type="hidden" name="type" value="{{ type }}">
+    <input type="hidden" name="serviceId" value="{{ service.id }}">
+
+    <div class="card mb-5 shadow-sm">
+      <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="fas fa-hourglass-start me-2"></i>Primes en attente de validation</h5>
+        <span class="badge bg-light text-dark">{{ ready|length }}</span>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width:40px"><input type="checkbox" id="checkAll"></th>
+                <th>Employé</th>
+                <th>Matricule</th>
+                <th>Montant</th>
+                <th class="text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for pp in ready %}
+                <tr>
+                  <td><input type="checkbox" name="selected[]" value="{{ pp.id }}"></td>
+                  <td>{{ pp.employee.prenom }} {{ pp.employee.nom }}</td>
+                  <td>{{ pp.employee.matricule }}</td>
+                  <td>{{ pp.getMontantFormate() }}</td>
+                  <td class="text-center">
+                    <button type="submit"
+                            class="btn btn-sm btn-success"
+                            formaction="{{ path('responsable_division_valider_ligne', { id: pp.id }) }}"
+                            formmethod="post">
+                      <i class="fas fa-check me-1"></i>Valider
+                    </button>
+                    <button type="submit"
+                            class="btn btn-sm btn-outline-danger ms-1"
+                            formaction="{{ path('responsable_division_retour_ligne', { id: pp.id }) }}"
+                            formmethod="post">
+                      <i class="fas fa-undo me-1"></i>Retour
+                    </button>
+                  </td>
+                </tr>
+              {% else %}
+                <tr>
+                  <td colspan="5" class="text-center py-4">Aucune prime en attente.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card-footer text-end">
+        <button type="submit" class="btn btn-success">
+          <i class="fas fa-check-double me-1"></i>Valider la sélection
+        </button>
+        <button type="submit"
+                class="btn btn-outline-danger ms-2"
+                formaction="{{ path('responsable_division_retour_batch') }}"
+                formmethod="post">
+          <i class="fas fa-undo me-1"></i>Retourner la sélection
+        </button>
+      </div>
+    </div>
+  </form>
+
+  {# --- 3) Primes validées par la division --- #}
+  <div class="card shadow-sm">
+    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+      <h5 class="mb-0"><i class="fas fa-check-double me-2"></i>Primes validées</h5>
+      <span class="badge bg-light text-dark">{{ validated|length }}</span>
+    </div>
+    <div class="card-body p-0">
+      <div class="table-responsive">
+        <table class="table table-hover mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>Employé</th>
+              <th>Matricule</th>
+              <th>Montant</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for pp in validated %}
+              <tr>
+                <td>{{ pp.employee.prenom }} {{ pp.employee.nom }}</td>
+                <td>{{ pp.employee.matricule }}</td>
+                <td>{{ pp.getMontantFormate() }}</td>
+              </tr>
+            {% else %}
+              <tr>
+                <td colspan="3" class="text-center py-4">Aucune prime validée.</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block javascripts %}
+  {{ parent() }}
+  <script>
+    document.getElementById('checkAll')?.addEventListener('change', function(e) {
+      document.querySelectorAll('input[name="selected[]"]').forEach(cb => cb.checked = e.target.checked);
+    });
+  </script>
+{% endblock %}

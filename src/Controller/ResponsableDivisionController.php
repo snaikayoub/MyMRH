@@ -70,46 +70,43 @@ class ResponsableDivisionController extends AbstractController
             throw $this->createAccessDeniedException('Service non autorisé');
         }
 
-        // Période courante
+        // 1) Période courante
         $periodeCourante = $periodeRepo->findOneBy(
             ['typePaie' => $type, 'statut' => 'Ouverte'],
             ['annee' => 'DESC', 'mois' => 'DESC', 'quinzaine' => 'DESC']
         );
 
-        // Récupère toutes les primes prêtes / validées pour cette division et ce type
-        $allReady     = $repo->findByDivisionAndStatusAndType($user, 'service_validated', $type);
-        $allValidated = $repo->findByDivisionAndStatusAndType($user, 'division_validated', $type);
-
-        // Filtre pour ne garder que celles du service sélectionné
         $today = new \DateTimeImmutable();
-        $ready = array_filter($allReady, function (PrimePerformance $pp) use ($serviceId, $today) {
-            // on cherche une situation active de cet employé dans ce service
-            $situations = $pp->getEmployee()
-                ->getEmployeeSituations()
-                ->filter(
-                    fn($es) =>
-                    $es->getService()->getId() === $serviceId
-                        && $es->getStartDate() <= $today
-                        && (null === $es->getEndDate() || $es->getEndDate() >= $today)
-                );
-            return !$situations->isEmpty();
-        });
-        $validated = array_filter($allValidated, function (PrimePerformance $pp) use ($serviceId, $today) {
-            $situations = $pp->getEmployee()
-                ->getEmployeeSituations()
-                ->filter(
-                    fn($es) =>
-                    $es->getService()->getId() === $serviceId
-                        && $es->getStartDate() <= $today
-                        && (null === $es->getEndDate() || $es->getEndDate() >= $today)
-                );
-            return !$situations->isEmpty();
-        });
 
-        return $this->render('responsable_d/prime_performance.html.twig', [
+        // 2) Récupérer *toutes* les primes par statut
+        $allSubmitted   = $repo->findByDivisionAndStatusAndType($user, PrimePerformance::STATUS_SUBMITTED,         $type);
+        $allReady       = $repo->findByDivisionAndStatusAndType($user, PrimePerformance::STATUS_SERVICE_VALIDATED, $type);
+        $allValidated   = $repo->findByDivisionAndStatusAndType($user, PrimePerformance::STATUS_DIVISION_VALIDATED, $type);
+
+        // 3) Filtrer par service actif
+        $filterByService = function (array $pps) use ($serviceId, $today): array {
+            return array_filter($pps, function (PrimePerformance $pp) use ($serviceId, $today) {
+                $situations = $pp->getEmployee()
+                    ->getEmployeeSituations()
+                    ->filter(
+                        fn($es) =>
+                        $es->getService()->getId() === $serviceId
+                            && $es->getStartDate() <= $today
+                            && (null === $es->getEndDate() || $es->getEndDate() >= $today)
+                    );
+                return !$situations->isEmpty();
+            });
+        };
+
+        $submitted = $filterByService($allSubmitted);
+        $ready     = $filterByService($allReady);
+        $validated = $filterByService($allValidated);
+
+        return $this->render('responsable_d/r_d_prime_performance.html.twig', [
             'type'            => $type,
             'service'         => $service,
             'periodeCourante' => $periodeCourante,
+            'submitted'       => $submitted,
             'ready'           => $ready,
             'validated'       => $validated,
         ]);
@@ -125,7 +122,7 @@ class ResponsableDivisionController extends AbstractController
     ): Response {
         // Récupère l’array de sélection correctement
         $ids = $request->request->all('selected') ?: [];
-        
+
         if (empty($ids)) {
             $this->addFlash('warning', 'Aucune prime sélectionnée.');
             return $this->redirectToRoute('responsable_division_prime_performance', [
@@ -133,7 +130,6 @@ class ResponsableDivisionController extends AbstractController
                 'serviceId' => $request->request->getInt('serviceId')
             ]);
         }
-        //dd($ids);
         $primes = $repo->findBy(['id' => $ids]);
         $count  = 0;
         foreach ($primes as $pp) {
@@ -146,7 +142,8 @@ class ResponsableDivisionController extends AbstractController
 
         $this->addFlash('success', "$count prime(s) validée(s) par la division.");
         $type = $request->request->get('type', 'mensuelle');
-        return $this->redirectToRoute('responsable_division_prime_performance', ['type' => $type]);
+        $serviceId = $request->request->getInt('serviceId', 0);
+        return $this->redirectToRoute('responsable_division_prime_performance', ['type' => $type, 'serviceId' => $serviceId]);
     }
 
 
@@ -159,7 +156,7 @@ class ResponsableDivisionController extends AbstractController
     ): Response {
         $type      = $request->request->get('type', 'mensuelle');
         $serviceId = $request->request->getInt('serviceId');
-
+        // Vérifie si la prime peut être validée par la division
         if ($primePerformanceStateMachine->can($pp, 'division_validate')) {
             $primePerformanceStateMachine->apply($pp, 'division_validate');
             $em->flush();
@@ -178,15 +175,16 @@ class ResponsableDivisionController extends AbstractController
         EntityManagerInterface $em,
         WorkflowInterface $primePerformanceStateMachine
     ): Response {
-        $ids       = $request->request->get('selected', []);
-        $type      = $request->request->get('type', 'mensuelle');
-        $serviceId = $request->request->getInt('serviceId');
+        // Récupère l’array de sélection correctement
+        $ids = $request->request->all('selected') ?: [];
 
         if (empty($ids)) {
             $this->addFlash('warning', 'Aucune prime sélectionnée.');
-            return $this->redirectToRoute('responsable_division_prime_performance', ['type' => $type, 'serviceId' => $serviceId]);
+            return $this->redirectToRoute('responsable_division_prime_performance', [
+                'type' => $request->request->get('type', 'mensuelle'),
+                'serviceId' => $request->request->getInt('serviceId')
+            ]);
         }
-
         $primes = $repo->findBy(['id' => $ids]);
         $count  = 0;
         foreach ($primes as $pp) {
@@ -197,7 +195,9 @@ class ResponsableDivisionController extends AbstractController
         }
         $em->flush();
 
-        $this->addFlash('success', "$count prime(s) retournée(s) au service.");
+        $this->addFlash('success', "$count prime(s) retournée(s) par la division.");
+        $type = $request->request->get('type', 'mensuelle');
+        $serviceId = $request->request->getInt('serviceId', 0);
         return $this->redirectToRoute('responsable_division_prime_performance', ['type' => $type, 'serviceId' => $serviceId]);
     }
 

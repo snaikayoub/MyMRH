@@ -61,4 +61,80 @@ class PrimePerformanceRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+    public function countSubmittedByType(User $responsable, string $type): int
+    {
+        return (int) $this->createQueryBuilder('pp')
+            ->select('COUNT(pp.id)')
+            ->join('pp.employee', 'e')
+            ->join('e.employeeSituations', 'es')
+            ->join('es.service', 's')
+            ->join('pp.periodePaie', 'p')
+            ->where('pp.status = :status')
+            ->andWhere('p.typePaie = :type')
+            ->andWhere('s.validateurService = :resp')
+            ->andWhere('es.endDate IS NULL OR es.endDate >= CURRENT_DATE()')
+            ->setParameter('status', 'submitted')
+            ->setParameter('type', $type)
+            ->setParameter('resp', $responsable)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+    public function findByServiceAndStatusAndType(User $responsable, string $status, string $type): array
+    {
+        return $this->createQueryBuilder('pp')
+            ->join('pp.employee', 'e')
+            ->join('e.employeeSituations', 'es')
+            ->join('es.service', 's')
+            ->join('pp.periodePaie', 'p')
+            ->where('pp.status = :status')
+            ->andWhere('p.typePaie = :type')
+            ->andWhere('s.validateurService = :resp')
+            ->andWhere('es.endDate IS NULL OR es.endDate >= CURRENT_DATE()')
+            ->setParameter('status', $status)
+            ->setParameter('resp', $responsable)
+            ->setParameter('type', $type)
+            ->orderBy('pp.periodePaie', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+    public function countByStatus(string $status): int
+    {
+        return $this->createQueryBuilder('pp')
+            ->select('COUNT(pp.id)')
+            ->andWhere('pp.status = :status')
+            ->setParameter('status', $status)
+            ->getQuery()
+            ->getSingleScalarResult();
+    }
+    public function findByStatusAndType(string $status, string $type): array
+    {
+        return $this->createQueryBuilder('pp')
+            ->join('pp.periodePaie', 'p')
+            ->where('pp.status = :status')
+            ->andWhere('p.typePaie = :type')
+            ->setParameter('status', $status)
+            ->setParameter('type', $type)
+            ->orderBy('p.annee', 'DESC')
+            ->addOrderBy('p.mois', 'DESC')
+            ->getQuery()
+            ->getResult();
+    }
+    public function findWithDivision(array $criteria, $divisionId = null)
+    {
+        $qb = $this->createQueryBuilder('pp')
+            ->leftJoin('pp.employee', 'e')
+            ->leftJoin('e.employeeSituations', 'es')
+            ->leftJoin('es.service', 's')
+            ->leftJoin('s.division', 'd')
+            ->addSelect('e', 'es', 's', 'd');
+
+        foreach ($criteria as $k => $v) {
+            $qb->andWhere("pp.$k = :$k")->setParameter($k, $v);
+        }
+        if ($divisionId) {
+            $qb->andWhere('d.id = :div')->setParameter('div', $divisionId);
+        }
+
+        return $qb->getQuery()->getResult();
+    }
 }

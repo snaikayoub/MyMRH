@@ -102,6 +102,8 @@ class GestionnaireController extends AbstractController
         ]);
     }
 
+    // src/Controller/GestionnaireController.php
+
     #[Route('/saisie/{type}', name: 'gestionnaire_saisie', methods: ['GET', 'POST'])]
     public function saisie(
         string $type,
@@ -114,14 +116,14 @@ class GestionnaireController extends AbstractController
         // 1) Récupérer tous les services gérés par ce gestionnaire
         $services = $em->getRepository(Service::class)
             ->createQueryBuilder('s')
-            ->join('s.gestionnaire', 'g')->where('g = :u')->setParameter('u', $user)
-            ->orderBy('s.nom', 'ASC')->getQuery()->getResult();
+            ->join('s.gestionnaire', 'g')
+            ->where('g = :user')->setParameter('user', $user)
+            ->orderBy('s.nom', 'ASC')
+            ->getQuery()->getResult();
 
-        //4) Charger automatiquement la seule période ouverte
-        $periode = $em->getRepository(PeriodePaie::class)->findOneBy([
-            'typePaie' => $type,
-            'statut' => 'Ouverte',
-        ]);
+        // 2) Charger automatiquement la seule période "ouverte" de ce type
+        $periode = $em->getRepository(PeriodePaie::class)
+            ->findOneBy(['typePaie' => $type, 'statut' => 'Ouverte']);
 
         if (!$periode) {
             $this->addFlash('error', 'Aucune période ouverte pour ce type de paie.');
@@ -134,7 +136,7 @@ class GestionnaireController extends AbstractController
         $scoreEquipe    = $periode->getScoreEquipe();
         $scoreCollectif = $periode->getScoreCollectif();
 
-        // 6) Rassembler toutes les EmployeeSituations actives
+        // 3) Rassembler toutes les EmployeeSituations actives des services
         $allSituations = new ArrayCollection();
         foreach ($services as $srv) {
             foreach ($srv->getEmployeeSituations() as $es) {
@@ -142,17 +144,21 @@ class GestionnaireController extends AbstractController
             }
         }
         $today = new \DateTimeImmutable();
-        $situations = $allSituations->filter(
-            fn(EmployeeSituation $es) =>
-            $es->getTypePaie() === $type
-                && $es->getStartDate() <= $today
-                && (null === $es->getEndDate() || $es->getEndDate() >= $today)
-        )->toArray();
+        $situations = $allSituations
+            ->filter(
+                fn(EmployeeSituation $es) =>
+                $es->getTypePaie() === $type
+                    && $es->getStartDate() <= $today
+                    && (null === $es->getEndDate() || $es->getEndDate() >= $today)
+            )
+            ->toArray();
 
-        // 7) Récupérer toutes les PrimePerformance existantes pour cette période
+        // 4) Récupérer toutes les PrimePerformance existantes pour cette période
+        /** @var PrimePerformance[] $allPP */
         $allPP = $em->getRepository(PrimePerformance::class)
             ->findBy(['periodePaie' => $periode]);
 
+        // 5) Construire submittedMap : status ≠ draft
         $submittedMap = [];
         foreach ($allPP as $pp) {
             if ($pp->getStatus() !== PrimePerformance::STATUS_DRAFT) {
@@ -160,21 +166,34 @@ class GestionnaireController extends AbstractController
             }
         }
 
-        // 8) pending : les EmployeeSituations sans PP ou dont la PP est encore en draft
-        $pending = array_filter(
-            $situations,
-            fn(EmployeeSituation $es) => !isset($submittedMap[$es->getEmployee()->getId()])
+        // 6) Filtrer submittedMap pour ne garder que les employés issus de nos situations
+        $validEmployeeIds = array_map(
+            fn(EmployeeSituation $es) => $es->getEmployee()->getId(),
+            $situations
+        );
+        $submittedMap = array_filter(
+            $submittedMap,
+            fn(PrimePerformance $pp) => in_array($pp->getEmployee()->getId(), $validEmployeeIds, true)
         );
 
+        // 7) pending = celles sans PP ou PP encore en draft
+        $pending = array_filter(
+            $situations,
+            fn(EmployeeSituation $es) =>
+            !isset($submittedMap[$es->getEmployee()->getId()])
+        );
+
+        // 8) Rendre la vue
         return $this->render('gestionnaire/g_prime_performance.html.twig', [
-            'type'            => $type,
-            'periode'         => $periode,
-            'scoreEquipe'     => $scoreEquipe,
-            'scoreCollectif'  => $scoreCollectif,
-            'pending'         => $pending,
-            'submittedMap'    => $submittedMap,
+            'type'           => $type,
+            'periode'        => $periode,
+            'scoreEquipe'    => $scoreEquipe,
+            'scoreCollectif' => $scoreCollectif,
+            'pending'        => $pending,
+            'submittedMap'   => $submittedMap,
         ]);
     }
+
 
     #[Route('/saisie/{type}/submit/{esId}', name: 'gestionnaire_submit_line', methods: ['POST'])]
     public function submitLine(
@@ -256,26 +275,42 @@ class GestionnaireController extends AbstractController
         ]);
     }
 
-    #[Route('/saisie/{type}/revert/{ppId}', name: 'gestionnaire_revert_line', methods: ['POST'])]
-    public function revertLine(
-        string $type,
-        int $ppId,
-        Request $request,
-        EntityManagerInterface $em,
-        WorkflowInterface $primePerformanceStateMachine
-    ): Response {
-        $periodeId = $request->request->getInt('periode');
-        $pp = $em->getRepository(PrimePerformance::class)->find($ppId);
-        if ($primePerformanceStateMachine->can($pp, 'revert')) {
-            $primePerformanceStateMachine->apply($pp, 'revert');
+    // src/Controller/GestionnaireController.php
+
+#[Route('/saisie/{type}/revert/{ppId}', name: 'gestionnaire_revert_line', methods: ['POST'])]
+public function revertLine(
+    string $type,
+    int $ppId,
+    Request $request,
+    EntityManagerInterface $em,
+    WorkflowInterface $primePerformanceStateMachine
+): Response {
+    // Récupération de l'ID de période depuis le champ caché
+    $periodeId = $request->request->getInt('periode');
+
+    /** @var PrimePerformance|null $pp */
+    $pp = $em->getRepository(PrimePerformance::class)->find($ppId);
+
+    if (!$pp) {
+        $this->addFlash('error', 'Prime introuvable.');
+    } else {
+        // Vérifier qu'on peut bien effectuer la transition de retour
+        if ($primePerformanceStateMachine->can($pp, 'retour_gestionnaire')) {
+            $primePerformanceStateMachine->apply($pp, 'retour_gestionnaire');
             $em->flush();
             $this->addFlash('success', 'Ligne remise en cours de modification.');
+        } else {
+            $this->addFlash('warning', 'Impossible de remettre cette ligne en modification.');
         }
-        return $this->redirectToRoute('gestionnaire_saisie', [
-            'type'    => $type,
-            'periode' => $periodeId,
-        ]);
     }
+
+    // Redirection vers le même écran de saisie
+    return $this->redirectToRoute('gestionnaire_saisie', [
+        'type'    => $type,
+        'periode' => $periodeId,
+    ]);
+}
+
 
     #[Route('/api/periode/{id}/scores', name: 'api_periode_scores', methods: ['GET'])]
     public function getScoresPeriode(int $id, EntityManagerInterface $em): JsonResponse

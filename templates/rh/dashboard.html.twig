@@ -1,0 +1,80 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}RH – Tableau de bord{% endblock %}
+
+{% block body %}
+<div class="container py-4">
+    <h2 class="mb-4">Tableau de bord RH</h2>
+
+    <!-- Statistiques globales -->
+    <div class="row mb-4">
+        {% for label, count in stats %}
+            <div class="col-md-3">
+                <div class="card shadow-sm p-3 text-center">
+                    <h6 class="text-muted">{{ {
+                        'draft': 'Brouillons',
+                        'submitted': 'Soumises',
+                        'service_validated': 'Validées Service',
+                        'division_validated': 'Validées Division'
+                    }[label]|default(label|capitalize) }}</h6>
+                    <h2>{{ count }}</h2>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+
+    <!-- Accès rapide aux analyses RH -->
+    <div class="row gy-3">
+        <div class="col-md-4">
+            <div class="card h-100 p-3 d-flex flex-column justify-content-between">
+                <div>
+                    <h5 class="mb-2">Tableau de synthèse</h5>
+                    <p class="text-muted mb-1">Tableau interactif filtré (période, division, statut) avec export Excel/PDF</p>
+                </div>
+                <a href="{{ path('rh_tableau_synthese') }}" class="btn btn-primary mt-2 w-100">
+                    Ouvrir la synthèse <i class="bi bi-table ms-2"></i>
+                </a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 p-3 d-flex flex-column justify-content-between">
+                <div>
+                    <h5 class="mb-2">Suivi des validations par division</h5>
+                    <p class="text-muted mb-1">Liste rapide des divisions & services</p>
+                </div>
+                <a href="{{ path('rh_etat_validations') }}" class="btn btn-outline-primary mt-2 w-100">
+                    Voir par division <i class="bi bi-diagram-3 ms-2"></i>
+                </a>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card h-100 p-3 d-flex flex-column justify-content-between">
+                <div>
+                    <h5 class="mb-2">Suivi par période</h5>
+                    <p class="text-muted mb-1">Toutes les périodes de paie, scores et statuts</p>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ path('rh_periodes_index', { type: 'mensuelle' }) }}" class="btn btn-outline-info w-50">
+                        Mensuelle
+                    </a>
+                    <a href="{{ path('rh_periodes_index', { type: 'quinzaine' }) }}" class="btn btn-outline-secondary w-50">
+                        Quinzaine
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Accès à d'autres modules RH futurs -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="alert alert-light border d-flex align-items-center">
+                <i class="bi bi-arrow-right-circle-fill me-2 text-primary"></i>
+                <span>
+                    <strong>À venir :</strong> modules RH avancés (absences, congés, sanctions, reporting…) intégrables ici.
+                </span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

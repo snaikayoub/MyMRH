@@ -40,4 +40,21 @@ class PeriodePaieRepository extends ServiceEntityRepository
     //            ->getOneOrNullResult()
     //        ;
     //    }
+    // src/Repository/PeriodePaieRepository.php
+
+    public function fermerAutresPeriodesOuvertes(PeriodePaie $periodeCourante): void
+    {
+        $qb = $this->createQueryBuilder('p')
+            ->update()
+            ->set('p.statut', ':ferme')
+            ->where('p.typePaie = :typePaie')
+            ->andWhere('p.id != :id')
+            ->andWhere('p.statut = :ouverte')
+            ->setParameter('ferme', 'Fermée')
+            ->setParameter('ouverte', 'Ouverte')
+            ->setParameter('typePaie', $periodeCourante->getTypePaie())
+            ->setParameter('id', $periodeCourante->getId());
+
+        $qb->getQuery()->execute();
+    }
 }
