@@ -1,0 +1,424 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Nouvelle mission / déplacement{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        .autocomplete-suggestions {
+            position: absolute;
+            z-index: 9999;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            max-height: 200px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            width: 100%;
+        }
+        .autocomplete-suggestion {
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        .autocomplete-suggestion:hover {
+            background-color: #f8f9fa;
+        }
+        .autocomplete-suggestion:last-child {
+            border-bottom: none;
+        }
+        .section-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            margin: 25px 0 20px 0;
+            border-radius: 8px;
+            font-weight: bold;
+            font-size: 1.1rem;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+    </style>
+{% endblock %}
+
+{% block body %}
+<div class="container py-5">
+
+    <div class="mb-4">
+        <h1 class="fw-bold">
+            <i class="fas fa-route text-info me-2"></i>
+            Nouvelle mission / déplacement
+        </h1>
+        <p class="text-muted">
+            Renseignez les informations de déplacement du collaborateur.
+        </p>
+    </div>
+
+    {# Flash messages #}
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ type == 'error' ? 'danger' : type }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <div class="card shadow-sm">
+        <div class="card-body">
+
+            {{ form_start(form) }}
+
+            <div class="row">
+                <div class="col-md-3 mb-3">
+                    {{ form_label(form.periodePaie) }}
+                    {{ form_widget(form.periodePaie, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.periodePaie) }}
+                </div>
+                <div class="col-md-3 mb-3">
+                    {{ form_label(form.employee) }}
+                    {{ form_widget(form.employee, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.employee) }}
+                </div>
+                
+                <div class="col-md-3 mb-3">
+                    {{ form_label(form.typeVoyage) }}
+                    {{ form_widget(form.typeVoyage, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.typeVoyage) }}
+                </div>
+
+                <div class="col-md-3 mb-3">
+                    {{ form_label(form.modeTransport) }}
+                    {{ form_widget(form.modeTransport, {'attr': {'class': 'form-select'}}) }}
+                    {{ form_errors(form.modeTransport) }}
+                </div>
+            </div>
+
+            <div class="mb-3">
+                {{ form_label(form.motif) }}
+                {{ form_widget(form.motif, {'attr': {'class': 'form-control', 'rows': 3}}) }}
+                {{ form_errors(form.motif) }}
+            </div>
+
+            {# ========== SECTION ALLER ========== #}
+            <div class="section-header">
+                <i class="fas fa-plane-departure me-2"></i>ALLER
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.dateHeureDepart) }}
+                    {{ form_widget(form.dateHeureDepart, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.dateHeureDepart) }}
+                </div>
+
+                <div class="col-md-4 mb-3 position-relative">
+                    {{ form_label(form.villeDepartAller) }}
+                    {{ form_widget(form.villeDepartAller, {'attr': {'class': 'form-control', 'placeholder': 'Ex: Casablanca, Maroc'}}) }}
+                    {{ form_errors(form.villeDepartAller) }}
+                    <div id="suggestions-depart-aller" class="autocomplete-suggestions" style="display:none;"></div>
+                </div>
+
+                <div class="col-md-4 mb-3 position-relative">
+                    {{ form_label(form.villeArriveeAller) }}
+                    {{ form_widget(form.villeArriveeAller, {'attr': {'class': 'form-control', 'placeholder': 'Ex: Rabat, Maroc'}}) }}
+                    {{ form_errors(form.villeArriveeAller) }}
+                    <div id="suggestions-arrivee-aller" class="autocomplete-suggestions" style="display:none;"></div>
+                </div>
+            </div>
+
+            {# ========== SECTION RETOUR ========== #}
+            <div class="section-header">
+                <i class="fas fa-plane-arrival me-2"></i>RETOUR
+            </div>
+
+            <div class="row">
+                <div class="col-md-4 mb-3">
+                    {{ form_label(form.dateHeureRetour) }}
+                    {{ form_widget(form.dateHeureRetour, {'attr': {'class': 'form-control'}}) }}
+                    {{ form_errors(form.dateHeureRetour) }}
+                </div>
+
+                <div class="col-md-4 mb-3 position-relative">
+                    {{ form_label(form.villeDepartRetour) }}
+                    {{ form_widget(form.villeDepartRetour, {'attr': {'class': 'form-control', 'placeholder': 'Ex: Rabat, Maroc'}}) }}
+                    {{ form_errors(form.villeDepartRetour) }}
+                    <div id="suggestions-depart-retour" class="autocomplete-suggestions" style="display:none;"></div>
+                </div>
+
+                <div class="col-md-4 mb-3 position-relative">
+                    {{ form_label(form.villeArriveeRetour) }}
+                    {{ form_widget(form.villeArriveeRetour, {'attr': {'class': 'form-control', 'placeholder': 'Ex: Casablanca, Maroc'}}) }}
+                    {{ form_errors(form.villeArriveeRetour) }}
+                    <div id="suggestions-arrivee-retour" class="autocomplete-suggestions" style="display:none;"></div>
+                </div>
+            </div>
+
+            {# Distance calculée #}
+            <div class="alert alert-info mb-4" id="distance-info" style="display:none;">
+                <i class="fas fa-route me-2"></i>
+                <strong>Distance totale estimée :</strong> 
+                <span id="distance-value" class="fs-5 fw-bold">0</span> km
+            </div>
+
+            {# Champ caché pour la distance #}
+            {{ form_widget(form.distanceKm) }}
+            
+            {# Champs cachés pour les coordonnées #}
+            {{ form_widget(form.latDepartAller) }}
+            {{ form_widget(form.lonDepartAller) }}
+            {{ form_widget(form.latArriveeAller) }}
+            {{ form_widget(form.lonArriveeAller) }}
+            {{ form_widget(form.latDepartRetour) }}
+            {{ form_widget(form.lonDepartRetour) }}
+            {{ form_widget(form.latArriveeRetour) }}
+            {{ form_widget(form.lonArriveeRetour) }}
+
+            <div class="mb-3">
+                {{ form_label(form.commentaire) }}
+                {{ form_widget(form.commentaire, {'attr': {'class': 'form-control', 'rows': 2}}) }}
+                {{ form_errors(form.commentaire) }}
+            </div>
+
+            {# Champs cachés restants (CSRF, etc.) #}
+            {{ form_rest(form) }}
+
+            <div class="d-flex justify-content-between mt-4">
+                <a href="{{ path('gestionnaire_dashboard') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i> Retour
+                </a>
+
+                <button type="submit" class="btn btn-info">
+                    <i class="fas fa-save me-1"></i> Enregistrer
+                </button>
+            </div>
+
+            {{ form_end(form, { render_rest: false }) }}
+
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+    const coordinates = {
+        departAller: { lat: null, lon: null },
+        arriveeAller: { lat: null, lon: null },
+        departRetour: { lat: null, lon: null },
+        arriveeRetour: { lat: null, lon: null }
+    };
+
+    // Fonction pour chercher des villes via Nominatim
+    async function searchCity(query) {
+        if (query.length < 3) return [];
+        
+        try {
+            const response = await fetch(
+                `https://nominatim.openstreetmap.org/search?` +
+                `format=json&q=${encodeURIComponent(query)}&` +
+                `limit=10&` +
+                `addressdetails=1&` +
+                `accept-language=fr&` +
+                `countrycodes=ma`,
+                {
+                    headers: {
+                        'User-Agent': 'VoyageDeplacementApp/1.0',
+                        'Accept-Language': 'fr-FR,fr;q=0.9'
+                    }
+                }
+            );
+            
+            const results = await response.json();
+            
+            return results.filter(result => {
+                const type = result.type;
+                const addressType = result.addresstype;
+                return ['city', 'town', 'village', 'municipality', 'administrative'].includes(type) ||
+                       ['city', 'town', 'village', 'municipality'].includes(addressType);
+            }).slice(0, 5);
+            
+        } catch (error) {
+            console.error('Erreur recherche ville:', error);
+            return [];
+        }
+    }
+
+    // Fonction pour formater l'affichage des résultats
+    function formatDisplayName(result) {
+        const address = result.address || {};
+        const parts = [];
+        
+        if (address.city) parts.push(address.city);
+        else if (address.town) parts.push(address.town);
+        else if (address.village) parts.push(address.village);
+        else if (result.name) parts.push(result.name);
+        
+        if (address.state && !parts.includes(address.state)) parts.push(address.state);
+        if (address.country && !parts.includes(address.country)) parts.push(address.country);
+        
+        return parts.length > 0 ? parts.join(', ') : result.display_name;
+    }
+
+    // Calculer la distance routière entre deux points via OSRM
+    async function calculateRouteDistance(lat1, lon1, lat2, lon2) {
+        try {
+            const url = `https://router.project-osrm.org/route/v1/driving/${lon1},${lat1};${lon2},${lat2}?overview=false`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+                return data.routes[0].distance / 1000;
+            }
+            
+            return calculateDistanceHaversine(lat1, lon1, lat2, lon2);
+        } catch (error) {
+            console.error('Erreur calcul route OSRM:', error);
+            return calculateDistanceHaversine(lat1, lon1, lat2, lon2);
+        }
+    }
+
+    // Calculer la distance à vol d'oiseau (formule de Haversine) - Fallback
+    function calculateDistanceHaversine(lat1, lon1, lat2, lon2) {
+        const R = 6371;
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLon = (lon2 - lon1) * Math.PI / 180;
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    }
+
+    // Mettre à jour la distance totale
+    async function updateTotalDistance() {
+        let totalDistance = 0;
+
+        // Distance aller
+        if (coordinates.departAller.lat && coordinates.arriveeAller.lat) {
+            const distanceAller = await calculateRouteDistance(
+                coordinates.departAller.lat,
+                coordinates.departAller.lon,
+                coordinates.arriveeAller.lat,
+                coordinates.arriveeAller.lon
+            );
+            totalDistance += distanceAller;
+        }
+
+        // Distance retour
+        if (coordinates.departRetour.lat && coordinates.arriveeRetour.lat) {
+            const distanceRetour = await calculateRouteDistance(
+                coordinates.departRetour.lat,
+                coordinates.departRetour.lon,
+                coordinates.arriveeRetour.lat,
+                coordinates.arriveeRetour.lon
+            );
+            totalDistance += distanceRetour;
+        }
+
+        if (totalDistance > 0) {
+            const roundedDistance = Math.round(totalDistance);
+            document.getElementById('distance-value').textContent = roundedDistance;
+            document.getElementById('distance-info').style.display = 'block';
+            document.getElementById('voyage_deplacement_distanceKm').value = roundedDistance;
+        }
+    }
+
+    // Configurer l'autocomplétion pour chaque champ
+    function setupAutocomplete(inputElement, suggestionsElement, coordType) {
+        let debounceTimer;
+
+        inputElement.addEventListener('input', function() {
+            clearTimeout(debounceTimer);
+            const query = this.value;
+
+            if (query.length < 3) {
+                suggestionsElement.style.display = 'none';
+                return;
+            }
+
+            debounceTimer = setTimeout(async () => {
+                const results = await searchCity(query);
+                
+                if (results.length === 0) {
+                    suggestionsElement.style.display = 'none';
+                    return;
+                }
+
+                suggestionsElement.innerHTML = results.map(result => {
+                    const displayText = formatDisplayName(result);
+                    
+                    return `
+                        <div class="autocomplete-suggestion" 
+                             data-lat="${result.lat}" 
+                             data-lon="${result.lon}"
+                             data-display="${displayText}">
+                            <i class="fas fa-map-marker-alt me-2 text-danger"></i>${displayText}
+                        </div>
+                    `;
+                }).join('');
+
+                suggestionsElement.style.display = 'block';
+
+                suggestionsElement.querySelectorAll('.autocomplete-suggestion').forEach(item => {
+                    item.addEventListener('click', function() {
+                        const lat = parseFloat(this.dataset.lat);
+                        const lon = parseFloat(this.dataset.lon);
+                        const displayName = this.dataset.display;
+
+                        inputElement.value = displayName;
+                        suggestionsElement.style.display = 'none';
+
+                        coordinates[coordType] = { lat, lon };
+
+                        const latField = document.getElementById(`voyage_deplacement_lat${coordType.charAt(0).toUpperCase() + coordType.slice(1)}`);
+                        const lonField = document.getElementById(`voyage_deplacement_lon${coordType.charAt(0).toUpperCase() + coordType.slice(1)}`);
+                        
+                        if (latField) latField.value = lat;
+                        if (lonField) lonField.value = lon;
+
+                        updateTotalDistance();
+                    });
+                });
+            }, 300);
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!inputElement.contains(e.target) && !suggestionsElement.contains(e.target)) {
+                suggestionsElement.style.display = 'none';
+            }
+        });
+    }
+
+    // Initialiser tous les champs d'autocomplétion
+    setupAutocomplete(
+        document.getElementById('voyage_deplacement_villeDepartAller'),
+        document.getElementById('suggestions-depart-aller'),
+        'departAller'
+    );
+
+    setupAutocomplete(
+        document.getElementById('voyage_deplacement_villeArriveeAller'),
+        document.getElementById('suggestions-arrivee-aller'),
+        'arriveeAller'
+    );
+
+    setupAutocomplete(
+        document.getElementById('voyage_deplacement_villeDepartRetour'),
+        document.getElementById('suggestions-depart-retour'),
+        'departRetour'
+    );
+
+    setupAutocomplete(
+        document.getElementById('voyage_deplacement_villeArriveeRetour'),
+        document.getElementById('suggestions-arrivee-retour'),
+        'arriveeRetour'
+    );
+});
+    </script>
+{% endblock %}

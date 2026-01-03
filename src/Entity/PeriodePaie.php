@@ -12,6 +12,15 @@ use Doctrine\ORM\Mapping as ORM;
 #[ORM\Entity(repositoryClass: PeriodePaieRepository::class)]
 class PeriodePaie
 {
+    /**
+     * Statuts possibles d'une période de paie
+     */
+    public const STATUT_OUVERT  = 'Ouverte';
+    public const STATUT_FERME   = 'Fermée';
+    public const STATUT_ARCHIVE = 'Archivée';
+
+    // ...
+    
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column]
@@ -46,10 +55,17 @@ class PeriodePaie
     #[ORM\Column(type: Types::DECIMAL, precision: 5, scale: 2, nullable: true)]
     private ?string $scoreCollectif = null;
 
+    /**
+     * @var Collection<int, VoyageDeplacement>
+     */
+    #[ORM\OneToMany(targetEntity: VoyageDeplacement::class, mappedBy: 'periodePaie')]
+    private Collection $voyageDeplacements;
+
 
     public function __construct()
     {
         $this->primePerformances = new ArrayCollection();
+        $this->voyageDeplacements = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -176,6 +192,36 @@ class PeriodePaie
     public function setScoreCollectif(?string $scoreCollectif): static
     {
         $this->scoreCollectif = $scoreCollectif;
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, VoyageDeplacement>
+     */
+    public function getVoyageDeplacements(): Collection
+    {
+        return $this->voyageDeplacements;
+    }
+
+    public function addVoyageDeplacement(VoyageDeplacement $voyageDeplacement): static
+    {
+        if (!$this->voyageDeplacements->contains($voyageDeplacement)) {
+            $this->voyageDeplacements->add($voyageDeplacement);
+            $voyageDeplacement->setPeriodePaie($this);
+        }
+
+        return $this;
+    }
+
+    public function removeVoyageDeplacement(VoyageDeplacement $voyageDeplacement): static
+    {
+        if ($this->voyageDeplacements->removeElement($voyageDeplacement)) {
+            // set the owning side to null (unless already changed)
+            if ($voyageDeplacement->getPeriodePaie() === $this) {
+                $voyageDeplacement->setPeriodePaie(null);
+            }
+        }
 
         return $this;
     }

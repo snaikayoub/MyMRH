@@ -64,11 +64,18 @@ class Employee
     #[ORM\OneToMany(targetEntity: Conge::class, mappedBy: 'employee')]
     private Collection $conges;
 
+    /**
+     * @var Collection<int, VoyageDeplacement>
+     */
+    #[ORM\OneToMany(targetEntity: VoyageDeplacement::class, mappedBy: 'employee')]
+    private Collection $voyageDeplacements;
+
     public function __construct()
     {
         $this->employeeSituations = new ArrayCollection();
         $this->primePerformances = new ArrayCollection();
         $this->conges = new ArrayCollection();
+        $this->voyageDeplacements = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -289,6 +296,36 @@ class Employee
             // set the owning side to null (unless already changed)
             if ($conge->getEmployee() === $this) {
                 $conge->setEmployee(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, VoyageDeplacement>
+     */
+    public function getVoyageDeplacements(): Collection
+    {
+        return $this->voyageDeplacements;
+    }
+
+    public function addVoyageDeplacement(VoyageDeplacement $voyageDeplacement): static
+    {
+        if (!$this->voyageDeplacements->contains($voyageDeplacement)) {
+            $this->voyageDeplacements->add($voyageDeplacement);
+            $voyageDeplacement->setEmployee($this);
+        }
+
+        return $this;
+    }
+
+    public function removeVoyageDeplacement(VoyageDeplacement $voyageDeplacement): static
+    {
+        if ($this->voyageDeplacements->removeElement($voyageDeplacement)) {
+            // set the owning side to null (unless already changed)
+            if ($voyageDeplacement->getEmployee() === $this) {
+                $voyageDeplacement->setEmployee(null);
             }
         }
 

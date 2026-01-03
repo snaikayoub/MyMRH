@@ -2,99 +2,58 @@
 
 namespace App\Controller;
 
-use App\Entity\Service;
+use App\Entity\CategoryTM;
 use App\Entity\PeriodePaie;
 use App\Entity\PrimePerformance;
 use App\Entity\EmployeeSituation;
-use App\Entity\CategoryTM;
-use Doctrine\Common\Collections\ArrayCollection;
+use App\Service\PeriodePaieService;
+use App\Service\PrimePerformanceService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\Routing\Annotation\Route;
+use Doctrine\Common\Collections\ArrayCollection;
+use Symfony\Component\Workflow\WorkflowInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use App\Service\GestionnaireService;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Workflow\WorkflowInterface;
 
 #[Route('/gestionnaire')]
 #[IsGranted('ROLE_GESTIONNAIRE_SERVICE')]
 class GestionnaireController extends AbstractController
 {
+    private PeriodePaieService $periodePaieService;
+    private GestionnaireService $GestionnaireService;
+    private PrimePerformanceService $primePerformanceService;
+
+    public function __construct(PeriodePaieService $periodePaieService, GestionnaireService $GestionnaireService, PrimePerformanceService $primePerformanceService)
+    {
+        $this->periodePaieService = $periodePaieService;
+        $this->GestionnaireService = $GestionnaireService;
+        $this->primePerformanceService = $primePerformanceService;
+    }
+
     #[Route('/dashboard', name: 'gestionnaire_dashboard')]
     public function dashboard(EntityManagerInterface $em): Response
     {
         $user = $this->getUser();
-        $services = $em->getRepository(Service::class)
-            ->createQueryBuilder('s')
-            ->join('s.gestionnaire', 'g')
-            ->where('g = :user')->setParameter('user', $user)
-            ->getQuery()->getResult();
-        // Nombre total de collaborateurs (employeeSituations)
-        $collaborateursCount = 0;
-        foreach ($services as $srv) {
-            $collaborateursCount += $srv->getEmployeeSituations()
-                ->filter(fn(EmployeeSituation $es) => $es->getStartDate() <= new \DateTimeImmutable() &&
-                    (null === $es->getEndDate() || $es->getEndDate() >= new \DateTimeImmutable()))
-                ->count();
-        }
-
-        // Récupérer les statistiques pour le dashboard
-        $currentMonth = (new \DateTimeImmutable())->format('m');
-        $currentYear = (new \DateTimeImmutable())->format('Y');
+        $services = $this->GestionnaireService->getManagedServicesByUser($user);
+        $nombreCollaborateurs = $this->GestionnaireService->countCollaborateursByServices($services);
 
         // Compter les primes saisies ce mois
-        $saisiesMois = $em->getRepository(PrimePerformance::class)
-            ->createQueryBuilder('pp')
-            ->select('COUNT(DISTINCT e.id)')
-            ->join('pp.periodePaie', 'p')
-            ->join('pp.employee', 'e')
-            ->join('e.employeeSituations', 'es')
-            ->join('es.service', 's')
-            ->join('s.gestionnaire', 'g')
-            ->where('g = :user')
-            ->andWhere('p.mois = :month')
-            ->andWhere('p.annee = :year')
-            ->setParameter('user', $user)
-            ->setParameter('month', $currentMonth)
-            ->setParameter('year', $currentYear)
-            ->getQuery()
-            ->getSingleScalarResult();
+        $primesSaisiesMois = $this->primePerformanceService->countPrimePerformanceSaisies($user, $em);
 
         // Compter les primes en attente (draft)
-        $primesEnAttente = $em->getRepository(PrimePerformance::class)
-            ->createQueryBuilder('pp')
-            ->select('COUNT(DISTINCT e.id)')
-            ->join('pp.employee', 'e')
-            ->join('e.employeeSituations', 'es')
-            ->join('es.service', 's')
-            ->join('s.gestionnaire', 'g')
-            ->where('g = :user')
-            ->andWhere('pp.status = :status')
-            ->setParameter('user', $user)
-            ->setParameter('status', PrimePerformance::STATUS_DRAFT)
-            ->getQuery()
-            ->getSingleScalarResult();
+        $primesEnAttente = $this->primePerformanceService->countPrimePerformanceEnAttente($user, $em);
 
         // Compter les primes validées
-        $primesValidees = $em->getRepository(PrimePerformance::class)
-            ->createQueryBuilder('pp')
-            ->select('COUNT(DISTINCT e.id)')
-            ->join('pp.employee', 'e')
-            ->join('e.employeeSituations', 'es')
-            ->join('es.service', 's')
-            ->join('s.gestionnaire', 'g')
-            ->where('g = :user')
-            ->andWhere('pp.status != :status')
-            ->setParameter('user', $user)
-            ->setParameter('status', PrimePerformance::STATUS_DRAFT)
-            ->getQuery()
-            ->getSingleScalarResult();
+        $primesValidees = $this->primePerformanceService->countPrimePerformanceValidees($user, $em);
 
         return $this->render('gestionnaire/g_dashboard.html.twig', [
-            'collaborateurs_count' => $collaborateursCount,
-            'collaborateurs_performance' => $collaborateursCount, // Peut être affiné selon vos besoins
-            'saisies_mois' => $saisiesMois,
+            'collaborateurs_count' => $nombreCollaborateurs,
+            'collaborateurs_performance' => $nombreCollaborateurs, // Peut être affiné selon vos besoins
+            'saisies_mois' => $primesSaisiesMois,
             'primes_en_attente' => $primesEnAttente,
             'primes_validees' => $primesValidees,
             'conges_en_attente' => 0, // À implémenter selon votre entité Congé
@@ -104,37 +63,27 @@ class GestionnaireController extends AbstractController
 
     // src/Controller/GestionnaireController.php
 
-    #[Route('/saisie/{type}', name: 'gestionnaire_saisie', methods: ['GET', 'POST'])]
-    public function saisie(
-        string $type,
-        Request $request,
-        EntityManagerInterface $em,
-        WorkflowInterface $primePerformanceStateMachine
-    ): Response {
+    #[Route('/saisie/performance/{type}', name: 'gestionnaire_saisie_performance', methods: ['GET', 'POST'])]
+    public function saisie(string $type, EntityManagerInterface $em): Response
+    {
         $user = $this->getUser();
 
         // 1) Récupérer tous les services gérés par ce gestionnaire
-        $services = $em->getRepository(Service::class)
-            ->createQueryBuilder('s')
-            ->join('s.gestionnaire', 'g')
-            ->where('g = :user')->setParameter('user', $user)
-            ->orderBy('s.nom', 'ASC')
-            ->getQuery()->getResult();
+        $services = $this->GestionnaireService->getManagedServicesByUser($user);
 
         // 2) Charger automatiquement la seule période "ouverte" de ce type
-        $periode = $em->getRepository(PeriodePaie::class)
-            ->findOneBy(['typePaie' => $type, 'statut' => 'Ouverte']);
-
-        if (!$periode) {
+        $periodeouverte = $this->periodePaieService->getPeriodeOuverte($type);
+        
+        if (!$periodeouverte) {
             $this->addFlash('error', 'Aucune période ouverte pour ce type de paie.');
             return $this->redirectToRoute('gestionnaire_dashboard');
         }
-        if (!$periode->getScoreEquipe() || !$periode->getScoreCollectif()) {
+        if (!$this->periodePaieService->isScoreConfigured($periodeouverte)) {
             $this->addFlash('error', 'Les scores pour cette période ne sont pas configurés.');
             return $this->redirectToRoute('gestionnaire_dashboard');
         }
-        $scoreEquipe    = $periode->getScoreEquipe();
-        $scoreCollectif = $periode->getScoreCollectif();
+        $scoreEquipe    = $periodeouverte->getScoreEquipe();
+        $scoreCollectif = $periodeouverte->getScoreCollectif();
 
         // 3) Rassembler toutes les EmployeeSituations actives des services
         $allSituations = new ArrayCollection();
@@ -156,7 +105,7 @@ class GestionnaireController extends AbstractController
         // 4) Récupérer toutes les PrimePerformance existantes pour cette période
         /** @var PrimePerformance[] $allPP */
         $allPP = $em->getRepository(PrimePerformance::class)
-            ->findBy(['periodePaie' => $periode]);
+            ->findBy(['periodePaie' => $periodeouverte]);
 
         // 5) Construire submittedMap : status ≠ draft
         $submittedMap = [];
@@ -186,7 +135,7 @@ class GestionnaireController extends AbstractController
         // 8) Rendre la vue
         return $this->render('gestionnaire/g_prime_performance.html.twig', [
             'type'           => $type,
-            'periode'        => $periode,
+            'periode'        => $periodeouverte,
             'scoreEquipe'    => $scoreEquipe,
             'scoreCollectif' => $scoreCollectif,
             'pending'        => $pending,
@@ -195,7 +144,7 @@ class GestionnaireController extends AbstractController
     }
 
 
-    #[Route('/saisie/{type}/submit/{esId}', name: 'gestionnaire_submit_line', methods: ['POST'])]
+    #[Route('/saisie/performance/{type}/submit/{esId}', name: 'gestionnaire_submit_line', methods: ['POST'])]
     public function submitLine(
         string $type,
         int $esId,
@@ -277,39 +226,39 @@ class GestionnaireController extends AbstractController
 
     // src/Controller/GestionnaireController.php
 
-#[Route('/saisie/{type}/revert/{ppId}', name: 'gestionnaire_revert_line', methods: ['POST'])]
-public function revertLine(
-    string $type,
-    int $ppId,
-    Request $request,
-    EntityManagerInterface $em,
-    WorkflowInterface $primePerformanceStateMachine
-): Response {
-    // Récupération de l'ID de période depuis le champ caché
-    $periodeId = $request->request->getInt('periode');
+    #[Route('/saisie/performance/{type}/revert/{ppId}', name: 'gestionnaire_revert_line', methods: ['POST'])]
+    public function revertLine(
+        string $type,
+        int $ppId,
+        Request $request,
+        EntityManagerInterface $em,
+        WorkflowInterface $primePerformanceStateMachine
+    ): Response {
+        // Récupération de l'ID de période depuis le champ caché
+        $periodeId = $request->request->getInt('periode');
 
-    /** @var PrimePerformance|null $pp */
-    $pp = $em->getRepository(PrimePerformance::class)->find($ppId);
+        /** @var PrimePerformance|null $pp */
+        $pp = $em->getRepository(PrimePerformance::class)->find($ppId);
 
-    if (!$pp) {
-        $this->addFlash('error', 'Prime introuvable.');
-    } else {
-        // Vérifier qu'on peut bien effectuer la transition de retour
-        if ($primePerformanceStateMachine->can($pp, 'retour_gestionnaire')) {
-            $primePerformanceStateMachine->apply($pp, 'retour_gestionnaire');
-            $em->flush();
-            $this->addFlash('success', 'Ligne remise en cours de modification.');
+        if (!$pp) {
+            $this->addFlash('error', 'Prime introuvable.');
         } else {
-            $this->addFlash('warning', 'Impossible de remettre cette ligne en modification.');
+            // Vérifier qu'on peut bien effectuer la transition de retour
+            if ($primePerformanceStateMachine->can($pp, 'retour_gestionnaire')) {
+                $primePerformanceStateMachine->apply($pp, 'retour_gestionnaire');
+                $em->flush();
+                $this->addFlash('success', 'Ligne remise en cours de modification.');
+            } else {
+                $this->addFlash('warning', 'Impossible de remettre cette ligne en modification.');
+            }
         }
-    }
 
-    // Redirection vers le même écran de saisie
-    return $this->redirectToRoute('gestionnaire_saisie', [
-        'type'    => $type,
-        'periode' => $periodeId,
-    ]);
-}
+        // Redirection vers le même écran de saisie
+        return $this->redirectToRoute('gestionnaire_saisie_performance', [
+            'type'    => $type,
+            'periode' => $periodeId,
+        ]);
+    }
 
 
     #[Route('/api/periode/{id}/scores', name: 'api_periode_scores', methods: ['GET'])]
@@ -343,12 +292,7 @@ public function revertLine(
         $user = $this->getUser();
 
         // Récupérer les services gérés par ce gestionnaire
-        $services = $em->getRepository(Service::class)
-            ->createQueryBuilder('s')
-            ->join('s.gestionnaire', 'g')
-            ->where('g = :user')
-            ->setParameter('user', $user)
-            ->getQuery()->getResult();
+        $services = $this->GestionnaireService->getManagedServicesByUser($user);
 
         // Récupérer l'historique des primes
         // Logique à implémenter selon vos besoins
